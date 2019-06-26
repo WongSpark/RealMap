@@ -1,0 +1,227 @@
+<html>
+<head>
+    <title>My first three.js app</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <style>
+        body { margin: 0; }
+        canvas { width: 100%; height: 100% }
+    </style>
+</head>
+<body>
+<script src="js/stats.min.js"></script>
+<script src="../../data/dataDemo.js"></script>
+<script src="third/three.js"></script>
+<script src="js/OrbitControls.js"></script>
+<script>
+    function Rect(minx,miny,maxx,maxy){
+        this.tl = [minx || 0, miny || 0]; //top left point
+        this.br = [maxx || 0, maxy || 0]; //bottom right point
+    }
+    Rect.prototype.isCollide = function(rect){
+        if(rect.br[0] < this.tl[0] || rect.tl[0] > this.br[0] ||
+            rect.br[1] < this.tl[1] || rect.tl[1] > this.br[1]){
+            return false;
+        }
+        return true;
+    }
+
+    var needUpdate = true;
+    var scene = new THREE.Scene();
+    var camera = new THREE.PerspectiveCamera(20,
+        window.innerWidth/window.innerHeight, 0.1, 2000 );
+
+    var renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    renderer.setClearColor("#F2F2F2",1.0);
+    document.body.appendChild( renderer.domElement );
+
+    var control = new THREE.OrbitControls( camera, renderer.domElement );
+    control.minDistance = 100;
+    control.maxDistance = 500;
+
+    //根元素
+    var root = new THREE.Object3D();
+    scene.add(root);
+
+    //楼层地板
+    var roomHeight = 50;
+    var points,shape,geometry,mesh,wire;
+    //控制room的高度
+    var extrudeSettings = {
+        steps: 2,
+        depth: roomHeight,
+        bevelEnabled: true,
+        bevelThickness: 1,
+        bevelSize: 1,
+        bevelSegments: 1
+    };
+    var floor = data.data.Floors[0];
+    points = parsePoints(floor.Outline[0][0]);
+    shape = new THREE.Shape(points);
+    geometry = new THREE.ShapeGeometry(shape);
+    mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial( {
+        color: "#eef0f4",
+        opacity: 1,
+        transparent: false
+    }));
+    mesh.position.set(0, 0, 0);
+    root.add(mesh);
+
+    var functionArea = floor.FuncAreas;
+    for(var i = 0;i<functionArea.length;i++){
+        points = parsePoints(functionArea[i].Outline[0][0])
+        shape = new THREE.Shape(points);
+        geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+        mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({
+            color: "#ffcb1a",
+            opacity: 0.7,
+            transparent: true
+        }));
+        root.add(mesh);
+
+        //屋顶线
+        geometry = shape.createPointsGeometry();
+        wire = new THREE.Line(geometry, new THREE.LineBasicMaterial({
+            color: "#adadad",
+            opacity: 0.5,
+            transparent: true,
+            lineWidth: 1
+        }));
+        wire.position.set(0,0,roomHeight+1);
+        root.add(wire);
+    }
+
+    var spriteNames = new THREE.Object3D();
+    for(var index in functionArea){
+        var market = functionArea[index];
+        var textSprite = makeTextSprite(market.name?market.name:"无名称");
+        textSprite.position.set(market.Center[0],market.Center[1],70);
+        spriteNames.add(textSprite);
+    }
+    root.add(spriteNames);
+
+    var pubPoints = floor.PubPoint;
+    var spriteIcons = new THREE.Object3D();
+    for(var index in pubPoints){
+        var pubPoint = pubPoints[index];
+        var spriteMap = new THREE.TextureLoader().load( "img/ATM.png" );
+        var spriteMaterial = new THREE.SpriteMaterial( { map: spriteMap, color: "#fbfdff" } );
+        var sprite = new THREE.Sprite( spriteMaterial );
+        sprite.scale.set(50,50,1.0);
+        sprite.position.set(pubPoint.Outline[0][0][0], pubPoint.Outline[0][0][1],50+20);
+        spriteIcons.add(sprite);
+    }
+    root.add( spriteIcons );
+
+    //set up the lights
+    var light = new THREE.DirectionalLight(0xffffff);
+    light.position.set(-500, 500, -500);
+    scene.add(light);
+
+    var light = new THREE.DirectionalLight(0xffffff);
+    light.position.set(500, 500, 500);
+    scene.add(light);
+
+    var scale = 0.1;
+    root.scale.set(scale, scale, scale);
+    root.rotateOnAxis(new THREE.Vector3(1, 0, 0), -Math.PI / 2);
+
+    var camAngle = -0.890338608975752 + Math.PI/2;
+    var camDir = [Math.cos(camAngle), Math.sin(camAngle)];
+    var camLen = 500;
+    var tiltAngle = 75.0 * Math.PI/180.0;
+    camera.position.set(camDir[1]*camLen, Math.sin(tiltAngle) * camLen, camDir[0]*camLen);
+    //camera.position.set(0,0,500);
+    camera.lookAt(scene.position);
+
+    //坐标轴辅助
+    var axis = new THREE.AxisHelper(100);
+    scene.add(axis);
+
+    renderer.render( scene, camera );
+
+    var animate = function () {
+        requestAnimationFrame( animate );
+        if(needUpdate) {
+            updateSprite();
+            needUpdate = false;
+        }
+        renderer.render( scene, camera );
+    };
+    animate();
+    function updateSprite(){
+        var margin = 10;
+        var sprites = spriteNames.children;
+
+        for(var index in sprites){
+            var spriteToShow = sprites[index];
+            var imgWidthHalf1 = spriteToShow.width / 2 + margin;
+            var imgHeightHalf1 = spriteToShow.height / 2 + margin;
+            var rect1 = new Rect(
+                spriteToShow.position.x - imgWidthHalf1,
+                spriteToShow.position.y - imgHeightHalf1,
+                spriteToShow.position.x + imgHeightHalf1,
+                spriteToShow.position.y + imgHeightHalf1);
+            for(var j = 0;j<index;j++){
+                var spriteToCompare = sprites[j];
+                var imgWidthHalf2 = spriteToCompare.width / 2 + margin;
+                var imgHeightHalf2 = spriteToCompare.height / 2 + margin;
+                var rect2 = new Rect(
+                    spriteToCompare.position.x - imgWidthHalf2,
+                    spriteToCompare.position.y - imgHeightHalf2,
+                    spriteToCompare.position.x + imgHeightHalf2,
+                    spriteToCompare.position.y + imgHeightHalf2 );
+
+                if(rect1.isCollide(rect2)){
+                    spriteToCompare.visible = false;
+                    console.log(spriteToCompare.name);
+                }
+            }
+        }
+    }
+
+    //parse the points to THREE.Vector2 (remove duplicated points)
+    function parsePoints(pointArray){
+        var shapePoints = [];
+        for(var i=0; i < pointArray.length; i+=2){
+            var point = new THREE.Vector2(pointArray[i], pointArray[i+1]);
+            if(i>0) {
+                var lastpoint = shapePoints[shapePoints.length - 1];
+                //there are some duplicate points in the original data
+                if (point.x != lastpoint.x || point.y != lastpoint.y) {
+                    shapePoints.push(point);
+                }
+            }else{
+                shapePoints.push(point);
+            }
+        }
+        return shapePoints;
+    }
+
+    function makeTextSprite(message) {
+        var fontSize = 35;
+        var canvas = document.createElement('canvas');
+        var context = canvas.getContext('2d');
+        var messageSize = message.length * fontSize;
+        var width = messageSize ,height = fontSize;
+        canvas.width = width*2;
+        canvas.height = height*2*1.4;
+        context.fillStyle="#000000";
+        context.font = fontSize*2 + "px Arial";
+        context.fillText(message,0,fontSize*2);
+        var texture = new THREE.Texture(canvas);
+        texture.needsUpdate = true;
+
+        var spriteMaterial = new THREE.SpriteMaterial({
+            map: texture, useScreenCoordinates: false
+        });
+        var sprite = new THREE.Sprite( spriteMaterial );
+        sprite.scale.set(width,height,1.0);
+        sprite.name = message;
+        sprite.width = width;
+        sprite.height = height;
+        return sprite;
+    }
+</script>
+</body>
+</html>

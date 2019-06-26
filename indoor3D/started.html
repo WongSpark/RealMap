@@ -1,0 +1,269 @@
+<html>
+<head>
+    <title>My first three.js app</title>
+    <style>
+        body { margin: 0; }
+        canvas { width: 100%; height: 100% }
+    </style>
+</head>
+<body>
+<script src="js/stats.min.js"></script>
+<script src="../../data/dataDemo.js"></script>
+<script src="js/three.js"></script>
+<script src="js/OrbitControls.js"></script>
+<script>
+    //get the bounding Rect of the points
+    function Rect(minx,miny,maxx,maxy){
+        this.tl = [minx || 0, miny || 0]; //top left point
+        this.br = [maxx || 0, maxy || 0]; //bottom right point
+    }
+    Rect.prototype.isCollide = function(rect){
+        if(rect.br[0] < this.tl[0] || rect.tl[0] > this.br[0] ||
+            rect.br[1] < this.tl[1] || rect.tl[1] > this.br[1]){
+            return false;
+        }
+        return true;
+    }
+</script>
+<script>
+    var scene = new THREE.Scene();
+    var camera = new THREE.PerspectiveCamera(20,
+        window.innerWidth/window.innerHeight, 0.1, 2000 );
+
+    //orthogonal scene for sprites 2d rendering
+    var sceneOrtho = new THREE.Scene();
+    var cameraOrtho = new THREE.OrthographicCamera(
+        - window.innerWidth, window.innerWidth, window.innerHeight, -window.innerHeight, 1, 10);
+    cameraOrtho.position.z = 10;
+
+    var controls = new THREE.OrbitControls(this.camera);
+    controls.enabled = true;
+
+    var renderer = new THREE.WebGLRenderer({ antialias: true });
+    //renderer.autoClear = false;
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    renderer.setClearColor("#F2F2F2",1.0);
+    document.body.appendChild( renderer.domElement );
+
+    //根元素
+    var root = new THREE.Object3D();
+    scene.add(root);
+
+    //楼层地板
+    var roomHeight = 50;
+    var points,shape,geometry,mesh,wire;
+    var extrudeSettings = {amount: roomHeight, bevelEnabled: false};//TODO 控制room的高度
+    var floor = data.data.Floors[0];
+    points = parsePoints(floor.Outline[0][0]);
+    shape = new THREE.Shape(points);
+    geometry = new THREE.ShapeGeometry(shape);
+    mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial( {
+        color: "#E0E0E0",
+        opacity: 1,
+        transparent: false
+    }));
+    mesh.position.set(0, 0, 0);
+    root.add(mesh);
+
+    var functionArea = floor.FuncAreas;
+    for(var i = 0;i<functionArea.length;i++){
+        points = parsePoints(functionArea[i].Outline[0][0])
+        shape = new THREE.Shape(points);
+        geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+        mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({
+            color: "#AAAAAA",
+            opacity: 0.7,
+            transparent: true
+        }));
+        root.add(mesh);
+
+        //屋顶线
+        geometry = shape.createPointsGeometry();
+        wire = new THREE.Line(geometry, new THREE.LineBasicMaterial({
+            color: "#666666",
+            opacity: 0.5,
+            transparent: true,
+            linewidth: 1
+        }));
+        wire.position.set(0, 0, roomHeight);
+        root.add(wire);
+    }
+
+    //文字标注
+    var nameSprites = new THREE.Object3D();
+    for(var i = 0 ; i < functionArea.length; i++){
+        var sprite = makeTextSprite(functionArea[i].Name_en, {
+            color: "#231815",
+            fontsize: 10,
+            fontface: "Helvetica, MicrosoftYaHei "
+        });
+        sprite.position.set(functionArea[i].Center[0],functionArea[i].Center[1],roomHeight+5);
+        nameSprites.add(sprite);
+    }
+    var projectMatrix = new THREE.Matrix4();
+    projectMatrix.multiplyMatrices(
+        camera.projectionMatrix, camera.matrixWorldInverse);
+    //updateSprites(nameSprites, projectMatrix);
+    root.add(nameSprites);
+
+
+    //set up the lights
+    var light = new THREE.DirectionalLight(0xffffff);
+    light.position.set(-500, 500, -500);
+    scene.add(light);
+
+    var light = new THREE.DirectionalLight(0xffffff);
+    light.position.set(500, 500, 500);
+    scene.add(light);
+
+    var scale = 0.1;
+    root.scale.set(scale, scale, scale);
+    root.rotateOnAxis(new THREE.Vector3(1, 0, 0), -Math.PI / 2);
+
+    var camAngle = -0.890338608975752 + Math.PI/2;
+    var camDir = [Math.cos(camAngle), Math.sin(camAngle)];
+    var camLen = 500;
+    var tiltAngle = 75.0 * Math.PI/180.0;
+    camera.position.set(camDir[1]*camLen, Math.sin(tiltAngle) * camLen, camDir[0]*camLen);
+    camera.lookAt(scene.position);
+
+    renderer.render( scene, camera );
+
+    var stats = new Stats();
+    stats.domElement.style.position = 'absolute';
+    stats.domElement.style.top = '0px';
+    document.body.appendChild(stats.domElement);
+
+    var animate = function () {
+        stats.update();
+        controls.update();
+        requestAnimationFrame( animate );
+        renderer.render( scene, camera );
+        //renderer.render(sceneOrtho, cameraOrtho);
+    };
+    animate();
+
+    //parse the points to THREE.Vector2 (remove duplicated points)
+    function parsePoints(pointArray){
+        var shapePoints = [];
+        for(var i=0; i < pointArray.length; i+=2){
+            var point = new THREE.Vector2(pointArray[i], pointArray[i+1]);
+            if(i>0) {
+                var lastpoint = shapePoints[shapePoints.length - 1];
+                //there are some duplicate points in the original data
+                if (point.x != lastpoint.x || point.y != lastpoint.y) {
+                    shapePoints.push(point);
+                }
+            }else{
+                shapePoints.push(point);
+            }
+        }
+        return shapePoints;
+    }
+
+    function makeTextSprite( message, parameters ) {
+        if ( parameters === undefined ) parameters = {};
+
+        var fontface = parameters.hasOwnProperty("fontface") ?
+            parameters["fontface"] : "Arial";
+
+        var fontsize = parameters.hasOwnProperty("fontsize") ?
+            parameters["fontsize"] : 18;
+
+        var borderThickness = parameters.hasOwnProperty("borderThickness") ?
+            parameters["borderThickness"] : 2;
+
+        var borderColor = parameters.hasOwnProperty("borderColor") ?
+            parameters["borderColor"] : { r:0, g:0, b:0, a:1.0 };
+
+        var backgroundColor = parameters.hasOwnProperty("backgroundColor") ?
+            parameters["backgroundColor"] : { r:255, g:255, b:255, a:1.0 };
+
+        var fontColor = parameters.hasOwnProperty("color")?
+            parameters["color"] : "#000000";
+
+        var canvas = document.createElement('canvas');
+        var context = canvas.getContext('2d');
+        context.font = "Bold " + fontsize + "px " + fontface;
+
+        // get size data (height depends only on font size)
+        var metrics = context.measureText( message );
+
+       // TODO background color
+
+        // border color
+        context.strokeStyle = "rgba(" + borderColor.r + "," + borderColor.g + ","
+            + borderColor.b + "," + borderColor.a + ")";
+
+        // text color
+        context.fillStyle = fontColor;
+
+        context.fillText( message, borderThickness, fontsize + borderThickness);
+
+        // canvas contents will be used for a texture
+        var texture = new THREE.Texture(canvas)
+        texture.needsUpdate = true;
+
+        var spriteMaterial = new THREE.SpriteMaterial(
+            { map: texture, useScreenCoordinates: false } );
+        var sprite = new THREE.Sprite( spriteMaterial );
+        sprite.scale.set(100,50,1.0);
+        sprite.width = metrics.width;
+        sprite.height = fontsize * 1.4;
+        return sprite;
+    }
+
+    function updateSprites(spritelist, projectMatrix){
+        for(var i = 0 ; i < spritelist.children.length; i++){
+            var sprite = spritelist.children[i];
+            var vec = new THREE.Vector3(sprite.oriX * 0.1, 0, -sprite.oriY * 0.1);
+            vec.applyProjection(projectMatrix);
+
+            var x = Math.round(vec.x * window.innerWidth);
+            var y = Math.round(vec.y * window.innerHeight);
+            sprite.position.set(x, y, 1);
+
+            //check collision with the former sprites
+            var visible = true;
+            var visibleMargin = 5;
+            for(var j = 0; j < i; j++){
+                var img = sprite.material.map.image;
+                if(!img){ //if img is undefined (the img has not loaded)
+                    visible = false;
+                    break;
+                }
+
+                var imgWidthHalf1 = sprite.width / 2;
+                var imgHeightHalf1 = sprite.height / 2;
+                var rect1 = new Rect(sprite.position.x - imgWidthHalf1, sprite.position.y - imgHeightHalf1,
+                    sprite.position.x + imgHeightHalf1, sprite.position.y + imgHeightHalf1 );
+
+                var sprite2 = spritelist.children[j];
+                var sprite2Pos = sprite2.position;
+                var imgWidthHalf2 = sprite2.width / 2;
+                var imgHeightHalf2 = sprite2.height / 2;
+                var rect2 = new Rect(sprite2Pos.x - imgWidthHalf2, sprite2Pos.y - imgHeightHalf2,
+                    sprite2Pos.x + imgHeightHalf2, sprite2Pos.y + imgHeightHalf2 );
+
+                if(sprite2.visible && rect1.isCollide(rect2)){
+                    visible = false;
+                    break;
+                }
+
+                rect1.tl[0] -= visibleMargin;
+                rect1.tl[1] -= visibleMargin;
+                rect2.tl[0] -= visibleMargin;
+                rect2.tl[1] -= visibleMargin;
+
+
+                if(sprite.visible == false && rect1.isCollide(rect2)){
+                    visible = false;
+                    break;
+                }
+            }
+            sprite.visible = visible;
+        }
+    }
+</script>
+</body>
+</html>
