@@ -12,13 +12,24 @@
 <script src="../../data/dataDemo.js"></script>
 <script src="third/three.js"></script>
 <script src="js/OrbitControls.js"></script>
-<script src="js/CopyShader.js"></script>
-<script src="js/EffectComposer.js"></script>
-<script src="js/ShaderPass.js"></script>
-<script src="js/DigitalGlitch.js"></script>
-<script src="js/RenderPass.js"></script>
-<script src="js/GlitchPass.js"></script>
 <script>
+    const chinaGeoJson = {
+        "type": "FeatureCollection",
+        "crs": {
+            "type": "name",
+            "properties": {
+                "name": "EPSG:4326"
+            }
+        },
+        "features": [{
+            "type": "Feature",
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[[120.5, 36.1], [121, 39], [120, 34]]]
+            }
+        }]
+    };
+
     function Rect(minx,miny,maxx,maxy){
         this.tl = [minx || 0, miny || 0]; //top left point
         this.br = [maxx || 0, maxy || 0]; //bottom right point
@@ -39,7 +50,7 @@
     var cameraOrtho = new THREE.OrthographicCamera(- window.innerWidth/2, window.innerWidth/2, window.innerHeight/2, -window.innerHeight/2, 1, 10);
     cameraOrtho.position.z = 10;
 
-    var renderer = new THREE.WebGLRenderer({ antialias: false });
+    var renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize( window.innerWidth, window.innerHeight );
     renderer.setClearColor("#F2F2F2",1.0);
     document.body.appendChild( renderer.domElement );
@@ -47,67 +58,14 @@
     var control = new THREE.OrbitControls( camera, renderer.domElement );
     control.minDistance = 100;
     control.maxDistance = 500;
-    //是否开启右键拖拽
-    control.enablePan = true;
-
-    // let hemiLight = new THREE.HemisphereLight( 0xffffff, 0xffffff, 0.6 );
-    // hemiLight.color.setHSL( 0.6, 1, 0.6 );
-    // hemiLight.groundColor.setHSL( 0.095, 1, 0.75 );
-    // hemiLight.position.set( 0, 50, 0 );
-    // scene.add( hemiLight );
-    // let hemiLightHelper = new THREE.HemisphereLightHelper( hemiLight, 10 );
-    // scene.add( hemiLightHelper );
-
-    // let dirLight = new THREE.DirectionalLight( 0xffffff, 1 );
-    // dirLight.color.setHSL( 0.1, 1, 0.95 );
-    // dirLight.position.set( - 1, 1.75, 1 );
-    // dirLight.position.multiplyScalar( 30 );
-    // scene.add( dirLight );
-    // dirLight.castShadow = true;
-    // dirLight.shadow.mapSize.width = 2048;
-    // dirLight.shadow.mapSize.height = 2048;
-    // var d = 50;
-    // dirLight.shadow.camera.left = - d;
-    // dirLight.shadow.camera.right = d;
-    // dirLight.shadow.camera.top = d;
-    // dirLight.shadow.camera.bottom = - d;
-    // dirLight.shadow.camera.far = 3500;
-    // dirLight.shadow.bias = - 0.0001;
-    // let dirLightHeper = new THREE.DirectionalLightHelper( dirLight, 10 );
-    // scene.add( dirLightHeper );
-
-    //set up the lights
-    var light = new THREE.DirectionalLight(0xffffff);
-    light.position.set(100, 100, -100);
-    scene.add(light);
-    let dirLightHeper = new THREE.DirectionalLightHelper( light, 10, "red");
-    scene.add( dirLightHeper );
-
-    // var reverselight = new THREE.DirectionalLight(0xffffff);
-    // light.position.set(500, 500, 500);
-    // scene.add(reverselight);
-    // let reversedirLightHeper = new THREE.DirectionalLightHelper( reverselight, 10, "FF0203");
-    // scene.add( reversedirLightHeper );
 
     //根元素
     var root = new THREE.Object3D();
     scene.add(root);
 
     //楼层地板
-    var roomHeight = 100;
+    var roomHeight = 150;
     var points,shape,geometry,mesh,wire;
-    var floor = data.data.Floors[0];
-    points = parsePoints(floor.Outline[0][0]);
-    shape = new THREE.Shape(points);
-    geometry = new THREE.ShapeGeometry(shape);
-    mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial( {
-        color: "#595b5d",
-        opacity: 1,
-        transparent: false
-    }));
-    mesh.position.set(0, 0, 0);
-    root.add(mesh);
-
     //控制room的高度
     var extrudeSettings = {
         steps: 2,
@@ -117,14 +75,26 @@
         bevelSize: 1,
         bevelSegments: 1
     };
+    var floor = data.data.Floors[0];
+    points = parsePoints(floor.Outline[0][0]);
+    shape = new THREE.Shape(points);
+    geometry = new THREE.ShapeGeometry(shape);
+    mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial( {
+        color: "#18a4f4",
+        opacity: 1,
+        transparent: false
+    }));
+    mesh.position.set(0, 0, 0);
+    root.add(mesh);
+
     var functionArea = floor.FuncAreas;
     for(var i = 0;i<functionArea.length;i++){
         points = parsePoints(functionArea[i].Outline[0][0])
         shape = new THREE.Shape(points);
         geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-        mesh = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({
-            color: "#0d2779",
-            opacity: .3,
+        mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({
+            color: "#ffcb1a",
+            opacity: 0.7,
             transparent: true
         }));
         root.add(mesh);
@@ -133,8 +103,9 @@
         geometry = shape.createPointsGeometry();
         wire = new THREE.Line(geometry, new THREE.LineBasicMaterial({
             color: "#adadad",
-            opacity: 0.3,
-            transparent: true
+            opacity: 0.5,
+            transparent: true,
+            lineWidth: 1
         }));
         wire.position.set(0,0,roomHeight+1);
         root.add(wire);
@@ -191,13 +162,6 @@
 
     renderer.render( scene, camera );
 
-    let composer = new THREE.EffectComposer(renderer);
-
-    let renderPass = new THREE.RenderPass(scene,camera);
-    composer.addPass(renderPass);
-    let glitchPass = new THREE.GlitchPass();
-    composer.addPass(glitchPass);
-
     var animate = function () {
         requestAnimationFrame( animate );
         if(needUpdate) {
@@ -205,9 +169,9 @@
             needUpdate = false;
         }
 
-        // renderer.clear();
+        renderer.clear();
         renderer.render( scene, camera );
-        // composer.render();
+
 
         // renderer.clearDepth();
         // renderer.render(sceneOrtho, cameraOrtho);
