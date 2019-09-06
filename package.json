@@ -8,5 +8,8 @@
     "server": "lite-server"
   },
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "three": "^0.108.0"
+  }
 }
