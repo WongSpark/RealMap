@@ -9,18 +9,17 @@
 </head>
 <body>
 <script src="js/stats.min.js"></script>
-<script src="../data/dataDemo.js"></script>
+<script src="../../data/dataDemo.js"></script>
 
 <script type="module">
-    import * as THREE from '../node_modules/three/build/three.module.js';
-    import { OrbitControls } from '../node_modules/three/examples/jsm/controls/OrbitControls.js';
-    import { EffectComposer } from '../node_modules/three/examples/jsm/postprocessing/EffectComposer.js';
-    import { RenderPass } from '../node_modules/three/examples/jsm/postprocessing/RenderPass.js';
-    import { GlitchPass } from '../node_modules/three/examples/jsm/postprocessing/GlitchPass.js';
-    import { OutlinePass  } from '../node_modules/three/examples/jsm/postprocessing/OutlinePass.js';
-    import { ShaderPass } from '../node_modules/three/examples/jsm/postprocessing/ShaderPass.js';
-    import { FXAAShader } from '../node_modules/three/examples/jsm/shaders/FXAAShader.js';
-    import { SMAAPass } from '../node_modules/three/examples/jsm/postprocessing/SMAAPass.js';
+    import * as THREE from '/node_modules/three/build/three.module.js';
+    import { OrbitControls } from '/node_modules/three/examples/jsm/controls/OrbitControls.js';
+    import { EffectComposer } from '/node_modules/three/examples/jsm/postprocessing/EffectComposer.js';
+    import { RenderPass } from '/node_modules/three/examples/jsm/postprocessing/RenderPass.js';
+    import { GlitchPass } from '/node_modules/three/examples/jsm/postprocessing/GlitchPass.js';
+    import { OutlinePass  } from '/node_modules/three/examples/jsm/postprocessing/OutlinePass.js';
+    import { ShaderPass  } from '/node_modules/three/examples/jsm/postprocessing/ShaderPass.js';
+    import { FXAAShader } from '/node_modules/three/examples/jsm/shaders/FXAAShader.js';
 
     function Rect(minx,miny,maxx,maxy){
         this.tl = [minx || 0, miny || 0]; //top left point
@@ -32,7 +31,7 @@
             return false;
         }
         return true;
-    };
+    }
 
     let needUpdate = true;
     let scene = new THREE.Scene();
@@ -40,53 +39,53 @@
 
     let sceneOrtho = new THREE.Scene();
     let cameraOrtho = new THREE.OrthographicCamera(- window.innerWidth/2, window.innerWidth/2, window.innerHeight/2, -window.innerHeight/2, 1, 10);
-    cameraOrtho.position.z = 500;
+    cameraOrtho.position.z = 10;
 
     let renderer = new THREE.WebGLRenderer({ antialias: false });
     renderer.setSize( window.innerWidth, window.innerHeight );
-    renderer.setClearColor("#000000",1.0);
+    renderer.setClearColor("#595b5d",1.0);
     document.body.appendChild( renderer.domElement );
 
     let composer = new EffectComposer(renderer);
 
     let renderPass = new RenderPass(scene,camera);
     composer.addPass(renderPass);
-    // let glitchPass = new GlitchPass();
-    // composer.addPass(glitchPass);
+    let glitchPass = new GlitchPass();
+    composer.addPass(glitchPass);
     let outlinePass = new OutlinePass( new THREE.Vector2( window.innerWidth, window.innerHeight ), scene, camera );
-    outlinePass.edgeStrength = 5.7;
+    outlinePass.edgeThickness = 4;
     outlinePass.edgeGlow = 1;
-    outlinePass.edgeThickness = 2.8;
+    outlinePass.edgeStrength = 2.8;
+    // outlinePass.pulsePeriod = 3;
     composer.addPass( outlinePass );
     let floorOutlinePass = new OutlinePass( new THREE.Vector2( window.innerWidth, window.innerHeight ), scene, camera );
-    floorOutlinePass.edgeStrength = 5.7;
+    floorOutlinePass.edgeThickness = 4;
     floorOutlinePass.edgeGlow = 1;
-    floorOutlinePass.edgeThickness = 2.8;
+    floorOutlinePass.edgeStrength = 2.8;
     composer.addPass( floorOutlinePass );
-
-    /**
-     * 基于fxaa算法的抗锯齿优化
-     */
-    // let fxaaPass = new ShaderPass( FXAAShader );
-    // let pixelRatio = renderer.getPixelRatio();
-    // fxaaPass.material.uniforms[ 'resolution' ].value.x = 1 / ( document.body.offsetWidth * pixelRatio );
-    // fxaaPass.material.uniforms[ 'resolution' ].value.y = 1 / ( document.body.offsetHeight * pixelRatio );
-
-    /**
-     * 基于smaa算法的抗锯齿优化
-     */
-    let pass = new SMAAPass( window.innerWidth * renderer.getPixelRatio(), window.innerHeight * renderer.getPixelRatio() );
-    composer.addPass( pass );
+    let fxaaPass = new ShaderPass( FXAAShader );
+    let pixelRatio = renderer.getPixelRatio();
+    fxaaPass.material.uniforms[ 'resolution' ].value.x = 1 / ( document.body.offsetWidth * pixelRatio );
+    fxaaPass.material.uniforms[ 'resolution' ].value.y = 1 / ( document.body.offsetHeight * pixelRatio );
+    composer.addPass(fxaaPass);
 
     let control = new OrbitControls( camera, renderer.domElement );
     control.minDistance = 100;
-    control.maxDistance = 5000;
+    control.maxDistance = 500;
+    //是否开启右键拖拽
     control.enablePan = true;
     control.mouseButtons = {
         LEFT: THREE.MOUSE.PAN,
         MIDDLE: THREE.MOUSE.DOLLY,
         RIGHT: THREE.MOUSE.ROTATE
-    };
+    }
+
+    //set up the lights
+    let light = new THREE.DirectionalLight(0xffffff);
+    light.position.set(100, 100, -100);
+    scene.add(light);
+    let dirLightHeper = new THREE.DirectionalLightHelper( light, 10, "red");
+    scene.add( dirLightHeper );
 
     //根元素
     let root = new THREE.Object3D();
@@ -94,19 +93,19 @@
 
     //楼层地板
     let roomHeight = 100;
-    let points,shape,geometry,mesh,wire;
+    let points,shape,geometry,wire;
     let floor = data.data.Floors[0];
     points = parsePoints(floor.Outline[0][0]);
     shape = new THREE.Shape(points);
     geometry = new THREE.ShapeGeometry(shape);
-    mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial( {
-        color: "#ffffff",
+    let mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial( {
+        color: "#595b5d",
         opacity: 1,
         transparent: false
     }));
     mesh.position.set(0, 0, 0);
-    floorOutlinePass.selectedObjects.push(mesh);
     root.add(mesh);
+    floorOutlinePass.selectedObjects.push(mesh);
 
     //控制room的高度
     let extrudeSettings = {
@@ -122,14 +121,14 @@
         points = parsePoints(functionArea[i].Outline[0][0])
         shape = new THREE.Shape(points);
         geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-        mesh = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({
+        let building = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({
             color: "#0d2779",
             opacity: .3,
             transparent: true
         }));
-        root.add(mesh);
+        root.add(building);
 
-        outlinePass.selectedObjects.push(mesh);
+        outlinePass.selectedObjects.push(building);
 
         //屋顶线
         geometry = shape.createPointsGeometry();
@@ -146,10 +145,10 @@
     for(let index in functionArea){
         let market = functionArea[index];
         let textSprite = makeTextSprite(market.name?market.name:"无名称");
-        textSprite.position.set(market.Center[0],roomHeight,market.Center[1]);
+        textSprite.position.set(market.Center[0],market.Center[1],roomHeight+10);
         spriteNames.add(textSprite);
     }
-    scene.add(spriteNames);
+    sceneOrtho.add(spriteNames);
 
     let pubPoints = floor.PubPoint;
     let spriteIcons = new THREE.Object3D();
@@ -158,34 +157,13 @@
         let spriteMap = new THREE.TextureLoader().load( "img/ATM.png" );
         let spriteMaterial = new THREE.SpriteMaterial( { map: spriteMap, color: "#fffaff" } );
         let sprite = new THREE.Sprite( spriteMaterial );
-        sprite.width = 30 * 10;
-        sprite.height = 30 * 10;
+        sprite.scale.set(30,30,1.0);
+        sprite.width = 30;
+        sprite.height = 30;
         sprite.position.set(pubPoint.Outline[0][0][0], pubPoint.Outline[0][0][1],roomHeight+10);
-        sprite.scale.set(10,10,1);
         spriteIcons.add(sprite);
     }
-    spriteIcons.scale.set(0.1, 0.1, 0.1);
-    spriteIcons.rotateOnAxis(new THREE.Vector3(1, 0, 0), -Math.PI / 2);
-    scene.add( spriteIcons );
-
-    //设置灯光
-    let light1 = new THREE.DirectionalLight(0xffffff);
-    light1.position.set(100, 100, -100);
-    scene.add(light1);
-    let dirLightHelper1 = new THREE.DirectionalLightHelper( light1, 10, "yellow");
-    scene.add( dirLightHelper1 );
-
-    let light2 = new THREE.DirectionalLight(0xffffff);
-    light2.position.set(-500, 500, -500);
-    scene.add(light2);
-    let dirLightHelper2 = new THREE.DirectionalLightHelper( light2, 10, "yellow");
-    scene.add( dirLightHelper2 );
-
-    let light3 = new THREE.DirectionalLight(0xffffff);
-    light3.position.set(500, 500, 500);
-    scene.add(light3);
-    let dirLightHelper3 = new THREE.DirectionalLightHelper( light3, 10, "yellow");
-    scene.add( dirLightHelper3 );
+    sceneOrtho.add( spriteIcons );
 
     let scale = 0.1;
     root.scale.set(scale, scale, scale);
@@ -264,26 +242,24 @@
     }
 
     function makeTextSprite(message) {
-        let fontSize = 3;
+        let fontSize = 35;
         let canvas = document.createElement('canvas');
         let context = canvas.getContext('2d');
         let messageSize = message.length * fontSize;
         let width = messageSize ,height = fontSize;
-        canvas.width = width;
-        canvas.height = height*1.4;
-        context.fillStyle="#ffffff";
-        context.textBaseline = "middle";
-        context.font = fontSize + "px Arial";
-        context.fillText(message,0,fontSize);
+        canvas.width = width*2;
+        canvas.height = height*2*1.4;
+        context.fillStyle="#2dff69";
+        context.font = fontSize*2 + "px Arial";
+        context.fillText(message,0,fontSize*2);
         let texture = new THREE.Texture(canvas);
         texture.needsUpdate = true;
 
         let spriteMaterial = new THREE.SpriteMaterial({
-            map: texture,
-            useScreenCoordinates: true
+            map: texture, useScreenCoordinates: false
         });
         let sprite = new THREE.Sprite( spriteMaterial );
-        sprite.scale.set(0.1,0.1,0.1);
+        sprite.scale.set(width,height,1.0);
         sprite.name = message;
         sprite.width = width;
         sprite.height = height;
