@@ -13,14 +13,14 @@
 
 <script type="module">
     import * as THREE from './js/build/three.module.js';
-    import { OrbitControls } from '../node_modules/three/examples/jsm/controls/OrbitControls.js';
-    import { EffectComposer } from '../node_modules/three/examples/jsm/postprocessing/EffectComposer.js';
-    import { RenderPass } from '../node_modules/three/examples/jsm/postprocessing/RenderPass.js';
-    import { GlitchPass } from '../node_modules/three/examples/jsm/postprocessing/GlitchPass.js';
-    import { OutlinePass  } from '../node_modules/three/examples/jsm/postprocessing/OutlinePass.js';
-    import { ShaderPass } from '../node_modules/three/examples/jsm/postprocessing/ShaderPass.js';
-    import { FXAAShader } from '../node_modules/three/examples/jsm/shaders/FXAAShader.js';
-    import { SMAAPass } from '../node_modules/three/examples/jsm/postprocessing/SMAAPass.js';
+    import { OrbitControls } from './third/three/examples/jsm/controls/OrbitControls.js';
+    import { EffectComposer } from './third/three/examples/jsm/postprocessing/EffectComposer.js';
+    import { RenderPass } from './third/three/examples/jsm/postprocessing/RenderPass.js';
+    import { GlitchPass } from './third/three/examples/jsm/postprocessing/GlitchPass.js';
+    import { OutlinePass  } from './third/three/examples/jsm/postprocessing/OutlinePass.js';
+    import { ShaderPass } from './third/three/examples/jsm/postprocessing/ShaderPass.js';
+    import { FXAAShader } from './third/three/examples/jsm/shaders/FXAAShader.js';
+    import { SMAAPass } from './third/three/examples/jsm/postprocessing/SMAAPass.js';
 
     function Rect(minx,miny,maxx,maxy){
         this.tl = [minx || 0, miny || 0]; //top left point
