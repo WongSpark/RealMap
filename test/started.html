@@ -10,8 +10,11 @@
 <body>
 <script src="js/stats.min.js"></script>
 <script src="../data/dataDemo.js"></script>
-
 <script type="module">
+    /**
+     * 这是一堆测试文件
+     *
+     */
     import * as THREE from './js/build/three.module.js';
     import { OrbitControls } from './third/three/examples/jsm/controls/OrbitControls.js';
     import { EffectComposer } from './third/three/examples/jsm/postprocessing/EffectComposer.js';
@@ -34,15 +37,22 @@
         return true;
     };
 
+    let spritesArray = [];
     let needUpdate = true;
     let scene = new THREE.Scene();
-    let camera = new THREE.PerspectiveCamera(20, window.innerWidth/window.innerHeight, 0.1, 2000 );
+    let camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 1, 2000 );
 
     let sceneOrtho = new THREE.Scene();
-    let cameraOrtho = new THREE.OrthographicCamera(- window.innerWidth/2, window.innerWidth/2, window.innerHeight/2, -window.innerHeight/2, 1, 10);
-    cameraOrtho.position.z = 500;
+    let cameraOrtho = new THREE.OrthographicCamera(
+        - window.innerWidth/2, window.innerWidth/2,
+        window.innerHeight/2, -window.innerHeight/2,
+        1, 1000
+    );
+    cameraOrtho.position.z = 10;
+    // sceneOrtho.add(cameraOrtho);
 
-    let renderer = new THREE.WebGLRenderer({ antialias: false });
+    let renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.autoClear = false;
     renderer.setSize( window.innerWidth, window.innerHeight );
     renderer.setClearColor("#000000",1.0);
     document.body.appendChild( renderer.domElement );
@@ -127,12 +137,15 @@
             opacity: .3,
             transparent: true
         }));
+        mesh.material.depthTest=true;
+        mesh.renderOrder = 999;
         root.add(mesh);
 
         outlinePass.selectedObjects.push(mesh);
 
         //屋顶线
         geometry = shape.createPointsGeometry();
+        // geometry = THREE.Geometry().setFromPoints( points )
         wire = new THREE.Line(geometry, new THREE.LineBasicMaterial({
             color: "#adadad",
             opacity: 0.3,
@@ -146,9 +159,10 @@
     for(let index in functionArea){
         let market = functionArea[index];
         let textSprite = makeTextSprite(market.name?market.name:"无名称");
-        textSprite.position.set(market.Center[0],roomHeight,market.Center[1]);
+        textSprite.position.set(market.Center[0],market.Center[1],roomHeight+10);
         spriteNames.add(textSprite);
     }
+    spriteNames.rotateOnAxis(new THREE.Vector3(1, 0, 0), -Math.PI / 2);
     scene.add(spriteNames);
 
     let pubPoints = floor.PubPoint;
@@ -156,17 +170,19 @@
     for(let index in pubPoints){
         let pubPoint = pubPoints[index];
         let spriteMap = new THREE.TextureLoader().load( "img/ATM.png" );
-        let spriteMaterial = new THREE.SpriteMaterial( { map: spriteMap, color: "#fffaff" } );
+        spriteMap.minFilter = THREE.LinearFilter;
+        let spriteMaterial = new THREE.SpriteMaterial( { map: spriteMap, color: "#ffffff" } );
+        // spriteMaterial.sizeAttenuation = false;
         let sprite = new THREE.Sprite( spriteMaterial );
-        sprite.width = 30 * 10;
-        sprite.height = 30 * 10;
-        sprite.position.set(pubPoint.Outline[0][0][0], pubPoint.Outline[0][0][1],roomHeight+10);
-        sprite.scale.set(10,10,1);
+        sprite.position.set(pubPoint.Outline[0][0][0], pubPoint.Outline[0][0][1],roomHeight + 10);
+        sprite.scale.set(30,30,1);
         spriteIcons.add(sprite);
+        spritesArray.push(sprite);
     }
-    spriteIcons.scale.set(0.1, 0.1, 0.1);
+    // spriteIcons.scale.set(0.1, 0.1, 0.1);
     spriteIcons.rotateOnAxis(new THREE.Vector3(1, 0, 0), -Math.PI / 2);
     scene.add( spriteIcons );
+    // sceneOrtho.add( spriteIcons );
 
     //设置灯光
     let light1 = new THREE.DirectionalLight(0xffffff);
@@ -187,7 +203,7 @@
     let dirLightHelper3 = new THREE.DirectionalLightHelper( light3, 10, "yellow");
     scene.add( dirLightHelper3 );
 
-    let scale = 0.1;
+    let scale = 1;
     root.scale.set(scale, scale, scale);
     root.rotateOnAxis(new THREE.Vector3(1, 0, 0), -Math.PI / 2);
 
@@ -204,45 +220,35 @@
     scene.add(axis);
 
     let animate = function () {
-        requestAnimationFrame( animate );
-        if(needUpdate) {
-            updateSprite();
-            needUpdate = false;
-        }
-
         // renderer.render( scene, camera );
         composer.render();
+        // updateSprites();
+        // renderer.render( sceneOrtho, cameraOrtho );
+
+        requestAnimationFrame( animate );
     };
     animate();
-    function updateSprite(){
-        let margin = 10;
-        let sprites = spriteNames.children;
 
-        for(let index in sprites){
-            let spriteToShow = sprites[index];
-            let imgWidthHalf1 = spriteToShow.width / 2 + margin;
-            let imgHeightHalf1 = spriteToShow.height / 2 + margin;
-            let rect1 = new Rect(
-                spriteToShow.position.x - imgWidthHalf1,
-                spriteToShow.position.y - imgHeightHalf1,
-                spriteToShow.position.x + imgHeightHalf1,
-                spriteToShow.position.y + imgHeightHalf1);
-            for(let j = 0;j<index;j++){
-                let spriteToCompare = sprites[j];
-                let imgWidthHalf2 = spriteToCompare.width / 2 + margin;
-                let imgHeightHalf2 = spriteToCompare.height / 2 + margin;
-                let rect2 = new Rect(
-                    spriteToCompare.position.x - imgWidthHalf2,
-                    spriteToCompare.position.y - imgHeightHalf2,
-                    spriteToCompare.position.x + imgHeightHalf2,
-                    spriteToCompare.position.y + imgHeightHalf2 );
+    function updateSprites(){
+        let projectMatrix = new THREE.Matrix4();
+        projectMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+        spritesArray.forEach(sprite=>{
+            let vec = new THREE.Vector3(sprite.position.x, sprite.position.y, 0);
+            vec.applyMatrix4(projectMatrix);
+            let x = Math.round(vec.x * window.innerWidth/2);
+            let y = Math.round(vec.y * window.innerHeight/2);
+            sprite.position.set(x, y, 1);
+        });
+    }
 
-                if(rect1.isCollide(rect2)){
-                    spriteToCompare.visible = false;
-                    console.log(spriteToCompare.name);
-                }
-            }
-        }
+    function getPoiScale(position,poiRect){
+        if(!position) return;
+        let distance = camera.position.distanceTo(position);
+        let top = Math.tan(camera.fov / 2 * Math.PI / 180)*distance;    //camera.fov 相机的拍摄角度
+        let meterPerPixel = 2*top/document.body.clientHeight;
+        let scaleX = poiRect.w * meterPerPixel;
+        let scaleY = poiRect.h * meterPerPixel;
+        return [scaleX,scaleY,1.0];
     }
 
     //parse the points to THREE.Vector2 (remove duplicated points)
@@ -264,31 +270,117 @@
     }
 
     function makeTextSprite(message) {
-        let fontSize = 3;
+        let fontSize = 14;
         let canvas = document.createElement('canvas');
         let context = canvas.getContext('2d');
-        let messageSize = message.length * fontSize;
+        let messageSize = context.measureText(message).width;
         let width = messageSize ,height = fontSize;
-        canvas.width = width;
+        canvas.width = width * 1.4;
         canvas.height = height*1.4;
-        context.fillStyle="#ffffff";
+        context.fillStyle="#ff0510";
         context.textBaseline = "middle";
         context.font = fontSize + "px Arial";
         context.fillText(message,0,fontSize);
         let texture = new THREE.Texture(canvas);
         texture.needsUpdate = true;
+        texture.minFilter = THREE.LinearFilter;
 
         let spriteMaterial = new THREE.SpriteMaterial({
             map: texture,
+            transparent: true,
+            color: "#ff1a25",
             useScreenCoordinates: true
         });
         let sprite = new THREE.Sprite( spriteMaterial );
-        sprite.scale.set(0.1,0.1,0.1);
+        sprite.scale.set(width,height,1);
         sprite.name = message;
         sprite.width = width;
         sprite.height = height;
         return sprite;
     }
+
+    // /* 创建字体精灵 */
+    // function makeTextSprite(message, parameters) {
+    //
+    //     if ( parameters === undefined ) parameters = {};
+    //
+    //     let fontface = parameters.hasOwnProperty("fontface") ?
+    //         parameters["fontface"] : "Arial";
+    //
+    //     /* 字体大小 */
+    //     let fontsize = parameters.hasOwnProperty("fontsize") ?
+    //         parameters["fontsize"] : 18;
+    //
+    //     /* 边框厚度 */
+    //     let borderThickness = parameters.hasOwnProperty("borderThickness") ?
+    //         parameters["borderThickness"] : 4;
+    //
+    //     /* 边框颜色 */
+    //     let borderColor = parameters.hasOwnProperty("borderColor") ?
+    //         parameters["borderColor"] : { r:0, g:0, b:0, a:1.0 };
+    //
+    //     /* 背景颜色 */
+    //     let backgroundColor = parameters.hasOwnProperty("backgroundColor") ?
+    //         parameters["backgroundColor"] : { r:255, g:255, b:255, a:1.0 };
+    //
+    //     /* 创建画布 */
+    //     let canvas = document.createElement('canvas');
+    //     let context = canvas.getContext('2d');
+    //
+    //     /* 字体加粗 */
+    //     context.font = "Bold " + fontsize + "px " + fontface;
+    //
+    //     /* 获取文字的大小数据，高度取决于文字的大小 */
+    //     let metrics = context.measureText( message );
+    //     let textWidth = metrics.width;
+    //
+    //     /* 背景颜色 */
+    //     context.fillStyle   = "rgba(" + backgroundColor.r + "," + backgroundColor.g + ","
+    //         + backgroundColor.b + "," + backgroundColor.a + ")";
+    //
+    //     /* 边框的颜色 */
+    //     context.strokeStyle = "rgba(" + borderColor.r + "," + borderColor.g + ","
+    //         + borderColor.b + "," + borderColor.a + ")";
+    //     context.lineWidth = borderThickness;
+    //
+    //     /* 绘制圆角矩形 */
+    //     roundRect(context, borderThickness/2, borderThickness/2, textWidth + borderThickness, fontsize * 1.4 + borderThickness, 6);
+    //
+    //     /* 字体颜色 */
+    //     context.fillStyle = "rgba(0, 0, 0, 1.0)";
+    //     context.fillText( message, borderThickness, fontsize + borderThickness);
+    //
+    //     /* 画布内容用于纹理贴图 */
+    //     let texture = new THREE.Texture(canvas);
+    //     texture.needsUpdate = true;
+    //     texture.minFilter = THREE.LinearFilter;
+    //     let spriteMaterial = new THREE.SpriteMaterial({ map: texture } );
+    //     let sprite = new THREE.Sprite( spriteMaterial );
+    //
+    //     /* 缩放比例 */
+    //     sprite.scale.set(25,50,0);
+    //
+    //     return sprite;
+    //
+    // }
+    // /* 绘制圆角矩形 */
+    // function roundRect(ctx, x, y, w, h, r) {
+    //
+    //     ctx.beginPath();
+    //     ctx.moveTo(x+r, y);
+    //     ctx.lineTo(x+w-r, y);
+    //     ctx.quadraticCurveTo(x+w, y, x+w, y+r);
+    //     ctx.lineTo(x+w, y+h-r);
+    //     ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+    //     ctx.lineTo(x+r, y+h);
+    //     ctx.quadraticCurveTo(x, y+h, x, y+h-r);
+    //     ctx.lineTo(x, y+r);
+    //     ctx.quadraticCurveTo(x, y, x+r, y);
+    //     ctx.closePath();
+    //     ctx.fill();
+    //     ctx.stroke();
+    //
+    // }
 </script>
 
 </body>
